@@ -1,0 +1,143 @@
+import numpy as np
+import cv2
+
+
+def compute_jnd_map(image: np.ndarray) -> np.ndarray:
+    """
+    Compute the JND (Just Noticeable Difference) map for a given 2D grayscale image.
+
+    This implementation is based on the kernels and formulas 
+    scripts, generalized to work with any image size.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        2D grayscale image (H x W). Can be uint8, uint16, or float.
+
+    Returns
+    -------
+    jnd : np.ndarray
+        2D array of the same shape as input, containing the JND values.
+    """
+
+    if image.ndim != 2:
+        raise ValueError("Input image must be 2D (grayscale).")
+
+    # Convert to float
+    img = image.astype(float)
+
+    # Limit maximum luminance 
+    max_lum = 1023
+    img[img > max_lum] = max_lum
+
+    H, W = img.shape
+
+    # Operator matrices 
+    G1 = np.array([[0, 0, 0, 0, 0],
+                   [1, 3, 8, 3, 1],
+                   [0, 0, 0, 0, 0],
+                   [-1, -3, -8, -3, -1],
+                   [0, 0, 0, 0, 0]], dtype=float)
+
+    G2 = np.array([[0, 0, 1, 0, 0],
+                   [0, 8, 3, 0, 0],
+                   [1, 3, 0, -3, -1],
+                   [0, 0, -3, -8, 0],
+                   [0, 0, -1, 0, 0]], dtype=float)
+
+    G3 = np.array([[0, 0, 1, 0, 0],
+                   [0, 0, 3, 8, 0],
+                   [-1, -3, 0, 3, 1],
+                   [0, -8, -3, 0, 0],
+                   [0, 0, -1, 0, 0]], dtype=float)
+
+    G4 = np.array([[0, 1, 0, -1, 0],
+                   [0, 3, 0, -3, 0],
+                   [0, 8, 0, -8, 0],
+                   [0, 3, 0, -3, 0],
+                   [0, 1, 0, -1, 0]], dtype=float)
+
+    B = np.array([[1, 1, 1, 1, 1],
+                  [1, 2, 2, 2, 1],
+                  [1, 2, 0, 2, 1],
+                  [1, 2, 2, 2, 1],
+                  [1, 1, 1, 1, 1]], dtype=float)
+
+    c = 150.0
+
+    # Output JND matrix
+    jnd = np.zeros((H, W), dtype=float)
+
+    # Constants 
+    T0 = 17.0
+    v = 3.0 / 128.0
+    a = 0.5
+
+    # For each pixel (x, y), compute JND
+    for x in range(H):
+        for y in range(W):
+            s1 = s2 = s3 = s4 = b = 0.0
+
+            # 5x5 neighborhood with boundary handling (using c)
+            for i in range(5):
+                for j in range(5):
+                    xx = x - 3 + i
+                    yy = y - 3 + j
+                    if (0 <= xx < H) and (0 <= yy < W):
+                        val = img[xx, yy]
+                    else:
+                        val = c  # padding value
+
+                    s1 += val * G1[i, j]
+                    s2 += val * G2[i, j]
+                    s3 += val * G3[i, j]
+                    s4 += val * G4[i, j]
+                    b += val * B[i, j]
+
+            g1 = abs(s1) / 16.0
+            g2 = abs(s2) / 16.0
+            g3 = abs(s3) / 16.0
+            g4 = abs(s4) / 16.0
+
+            mg = max(g1, g2, g3, g4)
+            bg = b / 32.0
+
+            # Background-luminance dependent slope
+            aa = bg * 0.0001 + 0.115
+
+            # Intersection with threshold axis
+            bb = a - bg * 0.01
+
+            # Spatial masking
+            f1 = mg * aa + bb
+
+            # Visibility threshold due to background luminance
+            if bg <= 127:
+                f2 = abs(T0 * (1 - (bg / 127.0) ** 0.5) + 3.0)
+            else:
+                f2 = v * (bg - 127.0) + 3.0
+
+            # JND(x, y)
+            jnd[x, y] = max(f1, f2)
+
+    return jnd
+
+
+def save_jnd_to_txt(jnd: np.ndarray, path: str) -> None:
+    """
+    Save a JND map (2D array) to a text file 
+
+    Each row is written on a separate line, values separated by spaces.
+    """
+
+    H, W = jnd.shape
+    with open(path, "w") as f:
+        for x in range(H):
+            row_vals = ["{:<10.5}".format(str(jnd[x, y])) for y in range(W)]
+            f.write(" ".join(row_vals))
+            f.write("\n")
+            f.flush()
+
+
+
+
