@@ -1,2 +1,5 @@
-# contrast-enhancement-jnd
-Contrast enhancement in medical images using Python 
+Digital soft-tissue radiographic images often suffer from low contrast due to acquisition limitations and illumination variations, which significantly reduce visibility of diagnostically relevant micro-structures such as micro-calcifications. To address this limitation, this project implements several contrast enhancement algorithms— including global Histogram Equalization (HE), Brightness Preserving Bi-Histogram Equalization (BBHE), Dynamic Histogram Equalization (DHE), Recursive Mean Based HE variants and Contrast Limited Adaptive Histogram Equalization (CLAHE). Additionally, perceptual enhancement strategies based on the Human Visual System (HVS) are incorporated using Just-Noticeable-Difference (JND) maps, in order to regulate contrast amplification according to perceived intensity variations. Both static and dynamic JND-controlled CLAHE implementations were developed and evaluated. Experimental results on breast specimen X-ray and phantom datasets demonstrate that JND-guided enhancement improves structural visibility while preventing over-enhancement and brightness distortion, leading to higher perceptual image quality compared to classical HE and CLAHE approaches.
+## Screenshot
+
+![images](figures/images.png)
+
